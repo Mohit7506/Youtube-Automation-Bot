@@ -1,6 +1,9 @@
 name: Daily Video
 
 on:
+  workflow_dispatch:  # Enables manual run via GitHub UI
+
+on:
   schedule:
     - cron: 0 5 * * * # 5 AM UTC
 
