@@ -1,6 +1,7 @@
 import sys
 sys.dont_write_bytecode = True
 import json
+import shutil
 from lib.content_handler import search_and_download_meditation_video, search_and_download_music, load_used_content, save_used_content
 from lib.video_processing import combine_audio_video
 from lib.youtube_upload import upload_to_youtube, refresh_token
@@ -34,16 +35,16 @@ def main():
             used_content['videos'].append(video_url)
 
             audio_url, attribution_text = search_and_download_music(audio_query, used_content['audios'])
-            if not audio_url:
-                print(f"Retrying with next config: Could not find audio for '{audio_query}'")
-                continue  
-
-            used_content['audios'].append(audio_url)
-
-            save_used_content(used_content)
-
-            metadata = generate_metadata(video_query, duration_minutes, attribution=attribution_text, is_short=is_short)
-            combine_audio_video("video.mp4", "music.mp3", "final_video.mp4", duration_minutes=duration_minutes, is_short=is_short)
+            if audio_url:
+                used_content['audios'].append(audio_url)
+                save_used_content(used_content)
+                metadata = generate_metadata(video_query, duration_minutes, attribution=attribution_text, is_short=is_short)
+                combine_audio_video("video.mp4", "music.mp3", "final_video.mp4", duration_minutes=duration_minutes, is_short=is_short)
+            else:
+                print(f"⚠️ No audio found for '{audio_query}'. Proceeding with silent video.")
+                save_used_content(used_content)
+                metadata = generate_metadata(video_query, duration_minutes, attribution=None, is_short=is_short)
+                shutil.copy("video.mp4", "final_video.mp4")
 
             if should_upload_to_youtube:
                 refresh_token()
@@ -98,9 +99,13 @@ def main():
 
             save_used_content(used_content)
 
-            metadata = generate_metadata(video_query, duration_minutes, attribution=attribution_text, is_short=is_short)
-
-            combine_audio_video("video.mp4", "music.mp3", "final_video.mp4", duration_minutes=duration_minutes, is_short=is_short)
+            if audio_url:
+                metadata = generate_metadata(video_query, duration_minutes, attribution=attribution_text, is_short=is_short)
+                combine_audio_video("video.mp4", "music.mp3", "final_video.mp4", duration_minutes=duration_minutes, is_short=is_short)
+            else:
+                print(f"⚠️ No audio found. Creating silent video.")
+                metadata = generate_metadata(video_query, duration_minutes, attribution=None, is_short=is_short)
+                shutil.copy("video.mp4", "final_video.mp4")
 
             upload_choice = input("Do you want to upload the video to YouTube? (yes/no): ").lower()
             if upload_choice == 'yes':
